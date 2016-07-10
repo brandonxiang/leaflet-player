@@ -1,0 +1,27 @@
+{
+  "name": "leaflet-player",
+  "version": "1.0.0",
+  "description": "A player to present geojson in a time series",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "browser-sync start --server --files \"**/*.html,**/*.css,**/*.js\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brandonxiang/leaflet-player.git"
+  },
+  "keywords": [
+    "leaflet",
+    "player"
+  ],
+  "author": "brandonxiang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/brandonxiang/leaflet-player/issues"
+  },
+  "homepage": "https://github.com/brandonxiang/leaflet-player#readme",
+  "devDependencies": {
+    "browser-sync": "^2.13.0"
+  }
+}
