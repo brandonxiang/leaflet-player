@@ -37,7 +37,7 @@ function style(feature) {
 
 var layers = [];
 var promises = [];
-var lastLayer;
+var lastLayer, timeline, startTime,endTime;
 
 promises.push($.getJSON('1.json', function (data) {
     var one = L.geoJson(data, { style: style });
@@ -60,11 +60,12 @@ promises.push($.getJSON('3.json', function (data) {
 
 Q.all(promises).then(function () {
     //timeline
+    startTime = layers[0].toGeoJSON().features[0].properties.time;
+    var endDate = new Date(layers[2].toGeoJSON().features[0].properties.time);
+    endDate.setDate(endDate.getDate()+1);
+    endTime = endDate.getTime();
 
-    var startTime = new Date(layers[0].toGeoJSON().features[0].properties.time);
-    var endTime = new Date(layers[2].toGeoJSON().features[0].properties.time);
-
-    var timelineData = new vis.DataSet([{ start: startTime, end: endTime, content: "leaflet-player demo" }]);
+    var timelineData = new vis.DataSet([{ start: new Date(startTime), end: endDate, content: "leaflet-player demo" }]);
 
     var timelineOptions = {
         "width": "100%",
@@ -74,29 +75,67 @@ Q.all(promises).then(function () {
         "showCustomTime": true
     }
 
-    var timeline = new vis.Timeline(document.getElementById('timeline'), timelineData, timelineOptions);
+    timeline = new vis.Timeline(document.getElementById('timeline'), timelineData, timelineOptions);
 
-    timeline.setCustomTime(startTime);
+    timeline.setCustomTime(startDate);
 
     timeline.on('timechange', function (properties) {
-        console.log(properties.time);
-        for (var i in layers) {
-            var jsontime = layers[i].toGeoJSON().features[0].properties.time;
-            var settime = properties.time.getTime()
-            if (settime >= jsontime && settime - jsontime < 86400000) {
-                var newlayer = layers[i];
-                if (lastLayer !== undefined && lastLayer !== newlayer) {
-                    map.removeLayer(lastLayer);
-                    map.addLayer(newlayer);
-                    lastLayer = newlayer;
-                }
-            }
-        }
+        layerChange(properties.time.getTime());
     })
 });
 
+function layerChange(settime) {
 
+    for (var i in layers) {
+        var jsontime = layers[i].toGeoJSON().features[0].properties.time;
 
+        if (settime >= jsontime && settime - jsontime < 86400000) {
+            var newlayer = layers[i];
+            if (lastLayer !== undefined && lastLayer !== newlayer) {
+                map.removeLayer(lastLayer);
+                map.addLayer(newlayer);
+                lastLayer = newlayer;
+            }
+        }
+    }
+}
 
+//play button
 
+var playbtn = L.control({ position: 'bottomright' });
 
+playbtn.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info');
+    this._button = L.DomUtil.create('button', '', this._div);
+    this._button.innerHTML = 'Play';
+    return this._div;
+}
+
+playbtn.addTo(map);
+
+var isPlaying = false;
+var player;
+
+$('.info button').click(function () {
+    if (isPlaying) {
+        //off
+        if (player !== undefined) {
+            clearInterval(player);
+        }
+        $(this).html('Play');
+        isPlaying = false;
+    } else {
+        //on
+        player = setInterval(function () {
+            var newTime = timeline.getCustomTime().getTime() + 60 * 60 * 100*6;
+            if(newTime > endTime){
+                newTime = startTime;
+            }
+            layerChange(newTime);
+            timeline.setCustomTime(new Date(newTime));
+            
+        }, 50);
+        $(this).html('Stop');
+        isPlaying = true;
+    }
+});
