@@ -1,16 +1,26 @@
-var osmUrl = '//api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpbG10dnA3NzY3OTZ0dmtwejN2ZnUycjYifQ.1W5oTOnWXQ9R1w8u3Oo1yA',
-    osm = new L.TileLayer(osmUrl, {
-        // subdomains:'1234',
-        id: 'mapbox.outdoors',
-        maxZoom: 15,
-        attribution: "Map data &copy; OpenStreetMap contributors"
-    });
+var map;
+var times = [];
+var layers = [];
+var lastLayer;
+var endTime;
+var startTime;
 
-var map = new L.Map('map', {
-    layers: [osm],
-    center: new L.LatLng(22.5, 114.5),
-    zoom: 9
-});
+function initMap() {
+    var osmUrl = '//api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpbG10dnA3NzY3OTZ0dmtwejN2ZnUycjYifQ.1W5oTOnWXQ9R1w8u3Oo1yA',
+        osm = new L.TileLayer(osmUrl, {
+            // subdomains:'1234',
+            id: 'mapbox.outdoors',
+            maxZoom: 15,
+            attribution: "Map data &copy; OpenStreetMap contributors"
+        });
+
+    map = new L.Map('map', {
+        layers: [osm],
+        center: new L.LatLng(22.5, 114.5),
+        zoom: 9
+    });
+}
+
 
 function getColor(d) {
     return d > 1000 ? '#800026' :
@@ -34,108 +44,128 @@ function style(feature) {
     };
 }
 
+function setPlayer(jsons) {
+    var promises = [];
 
-var layers = [];
-var promises = [];
-var lastLayer, timeline, startTime,endTime;
-
-promises.push($.getJSON('1.json', function (data) {
-    var one = L.geoJson(data, { style: style });
-    //init
-    map.addLayer(one);
-    lastLayer = one;
-    layers.push(one);
-}));
-
-promises.push($.getJSON('2.json', function (data) {
-    two = L.geoJson(data, { style: style });
-    layers.push(two);
-}));
-
-promises.push($.getJSON('3.json', function (data) {
-    three = L.geoJson(data, { style: style });
-    layers.push(three);
-}));
-
-
-Q.all(promises).then(function () {
-    //timeline
-    startTime = layers[0].toGeoJSON().features[0].properties.time;
-    var endDate = new Date(layers[2].toGeoJSON().features[0].properties.time);
-    endDate.setDate(endDate.getDate()+1);
-    endTime = endDate.getTime();
-
-    var timelineData = new vis.DataSet([{ start: new Date(startTime), end: endDate, content: "leaflet-player demo" }]);
-
-    var timelineOptions = {
-        "width": "100%",
-        "height": "120px",
-        "style": "box",
-        "axisOnTop": true,
-        "showCustomTime": true
+    times = jsons;
+    for (var i in jsons) {
+        promises.push($.getJSON(jsons[i], loadGeojson));
     }
 
-    timeline = new vis.Timeline(document.getElementById('timeline'), timelineData, timelineOptions);
+    Q.all(promises).then(function () {
+        //init
+        map.addLayer(layers[0]);
+        lastLayer = layers[0];
+        //timeline 
+        var startDate = setJsonDate(jsons[0])
+        var endDate = setJsonDate(jsons[jsons.length - 1])
+        endDate.setHours(endDate.getHours() + 1);
+        startTime = startDate.getTime();
+        endTime = endDate.getTime();
 
-    timeline.setCustomTime(startDate);
+        var timelineData = new vis.DataSet([{ start: startDate, end: endDate, content: "leaflet-player demo" }]);
 
-    timeline.on('timechange', function (properties) {
-        layerChange(properties.time.getTime());
-    })
-});
+        var timelineOptions = {
+            "width": "100%",
+            "height": "120px",
+            "style": "box",
+            "axisOnTop": true,
+            "showCustomTime": true
+        }
 
-function layerChange(settime) {
+        timeline = new vis.Timeline(document.getElementById('timeline'), timelineData, timelineOptions);
+
+        timeline.setCustomTime(startDate);
+
+        timeline.on('timechange', function (properties) {
+            layerChange(properties.time.getTime());
+        })
+    });
+}
+
+function setJsonDate(name) {
+    var newDate = new Date();
+    newDate.setFullYear(name.substr(0, 4));
+    newDate.setMonth(name.substr(4, 2));
+    newDate.setDate(name.substr(6, 2));
+    newDate.setHours(name.substr(8, 2));
+    newDate.setMinutes('0');
+    newDate.setSeconds('0');
+    return newDate;
+}
+
+function loadGeojson(json) {
+    var layer = L.geoJson(json, { style: style });
+    layers.push(layer);
+}
+
+function layerChange(currentTime) {
+    var currentDate = new Date(currentTime);
 
     for (var i in layers) {
-        var jsontime = layers[i].toGeoJSON().features[0].properties.time;
+        var jsonDate = setJsonDate(times[i]);
 
-        if (settime >= jsontime && settime - jsontime < 86400000) {
+        if (currentDate >= jsonDate && currentDate < jsonDate.setHours(jsonDate.getHours()+1)) {
             var newlayer = layers[i];
             if (lastLayer !== undefined && lastLayer !== newlayer) {
                 map.removeLayer(lastLayer);
                 map.addLayer(newlayer);
                 lastLayer = newlayer;
+                return;
             }
         }
     }
 }
 
-//play button
 
-var playbtn = L.control({ position: 'bottomright' });
+function initControl(interval) {
+    //play button
+    var playbtn = L.control({ position: 'bottomright' });
 
-playbtn.onAdd = function (map) {
-    this._div = L.DomUtil.create('div', 'info');
-    this._button = L.DomUtil.create('button', '', this._div);
-    this._button.innerHTML = 'Play';
-    return this._div;
+    playbtn.onAdd = function (map) {
+        this._div = L.DomUtil.create('div', 'info');
+        this._button = L.DomUtil.create('button', '', this._div);
+        this._button.innerHTML = 'Play';
+        return this._div;
+    }
+
+    playbtn.addTo(map);
+
+    var isPlaying = false;
+    var player;
+
+    $('.info button').click(function () {
+        if (isPlaying) {
+            //off
+            if (player !== undefined) {
+                clearInterval(player);
+            }
+            $(this).html('Play');
+            isPlaying = false;
+        } else {
+            //on
+            player = setInterval(function () {
+                //调节速度
+                var newTime = timeline.getCustomTime().getTime() + interval;
+                if (newTime > endTime) {
+                    newTime = startTime;
+                }
+                layerChange(newTime);
+                timeline.setCustomTime(new Date(newTime));
+
+            }, 50);
+            $(this).html('Stop');
+            isPlaying = true;
+        }
+    });
+
 }
 
-playbtn.addTo(map);
+function init() {
+    initMap();
+    initControl(1000 * 60);
+    var jsons = ['2016072508.json', '2016072509.json', '2016072510.json'];
+    setPlayer(jsons)
+}
 
-var isPlaying = false;
-var player;
-
-$('.info button').click(function () {
-    if (isPlaying) {
-        //off
-        if (player !== undefined) {
-            clearInterval(player);
-        }
-        $(this).html('Play');
-        isPlaying = false;
-    } else {
-        //on
-        player = setInterval(function () {
-            var newTime = timeline.getCustomTime().getTime() + 60 * 60 * 100*6;
-            if(newTime > endTime){
-                newTime = startTime;
-            }
-            layerChange(newTime);
-            timeline.setCustomTime(new Date(newTime));
-            
-        }, 50);
-        $(this).html('Stop');
-        isPlaying = true;
-    }
-});
+init();
