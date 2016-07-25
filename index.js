@@ -105,7 +105,7 @@ function layerChange(currentTime) {
     for (var i in layers) {
         var jsonDate = setJsonDate(times[i]);
 
-        if (currentDate >= jsonDate && currentDate < jsonDate.setHours(jsonDate.getHours()+1)) {
+        if (currentDate >= jsonDate && currentDate < jsonDate.setHours(jsonDate.getHours() + 1)) {
             var newlayer = layers[i];
             if (lastLayer !== undefined && lastLayer !== newlayer) {
                 map.removeLayer(lastLayer);
