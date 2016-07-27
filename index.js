@@ -56,7 +56,7 @@ function setPlayer(jsons) {
         //init
         map.addLayer(layers[0]);
         lastLayer = layers[0];
-        //timeline 
+        //timeline
         var startDate = setJsonDate(jsons[0])
         var endDate = setJsonDate(jsons[jsons.length - 1])
         endDate.setHours(endDate.getHours() + 1);
@@ -140,7 +140,7 @@ function initControl(interval) {
             if (player !== undefined) {
                 clearInterval(player);
             }
-            $(this).html('Play');
+            this.innerHTML = 'Play';
             isPlaying = false;
         } else {
             //on
@@ -154,7 +154,7 @@ function initControl(interval) {
                 timeline.setCustomTime(new Date(newTime));
 
             }, 50);
-            $(this).html('Stop');
+            this.innerHTML = 'Stop';
             isPlaying = true;
         }
     });

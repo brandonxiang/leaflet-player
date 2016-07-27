@@ -15,5 +15,9 @@ npm run dev
 ##Demo
 [Demo](https://brandonxiang.github.io/leaflet-player/)
 
+##TOOD
+- remove jquery
+- remove q.js
+
 ##LICENSE
 [MIT](LICENSE)
