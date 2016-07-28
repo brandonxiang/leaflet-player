@@ -1,36 +1,39 @@
-var map;
-var times = [];
-var layers = [];
-var lastLayer;
-var endTime;
-var startTime;
+var L = require("leaflet")
+
+var map
+var times = []
+var layers = []
+var lastLayer
+var endTime
+var startTime
+var timeline
 
 function initMap() {
-    var osmUrl = '//api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpbG10dnA3NzY3OTZ0dmtwejN2ZnUycjYifQ.1W5oTOnWXQ9R1w8u3Oo1yA',
+    var osmUrl = "//api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpbG10dnA3NzY3OTZ0dmtwejN2ZnUycjYifQ.1W5oTOnWXQ9R1w8u3Oo1yA",
         osm = new L.TileLayer(osmUrl, {
-            // subdomains:'1234',
-            id: 'mapbox.outdoors',
+            // subdomains:"1234",
+            id: "mapbox.outdoors",
             maxZoom: 15,
-            attribution: "Map data &copy; OpenStreetMap contributors"
-        });
+            attribution: "Map data &copy OpenStreetMap contributors"
+        })
 
-    map = new L.Map('map', {
+    map = new L.Map("map", {
         layers: [osm],
         center: new L.LatLng(22.5, 114.5),
         zoom: 9
-    });
+    })
 }
 
 
 function getColor(d) {
-    return d > 1000 ? '#800026' :
-        d > 500 ? '#BD0026' :
-            d > 200 ? '#E31A1C' :
-                d > 100 ? '#FC4E2A' :
-                    d > 50 ? '#FD8D3C' :
-                        d > 20 ? '#FEB24C' :
-                            d > 10 ? '#FED976' :
-                                '#FFEDA0';
+    return d > 1000 ? "#800026" :
+        d > 500 ? "#BD0026" :
+        d > 200 ? "#E31A1C" :
+        d > 100 ? "#FC4E2A" :
+        d > 50 ? "#FD8D3C" :
+        d > 20 ? "#FEB24C" :
+        d > 10 ? "#FED976" :
+        "#FFEDA0"
 }
 
 function style(feature) {
@@ -38,32 +41,45 @@ function style(feature) {
         fillColor: getColor(feature.properties.pr),
         weight: 2,
         opacity: 1,
-        color: 'white',
-        dashArray: '3',
+        color: "white",
+        dashArray: "3",
         fillOpacity: 0.7
-    };
+    }
 }
 
 function setPlayer(jsons) {
-    var promises = [];
+    var promises = []
 
-    times = jsons;
     for (var i in jsons) {
-        promises.push($.getJSON(jsons[i], loadGeojson));
+        var promise = new Promise(function(resolve) {
+            $.getJSON(jsons[i], function(json) {
+                times.push(json.properties.time)
+                var layer = L.geoJson(json, {
+                    style: style
+                })
+                resolve(layer)
+            })
+        })
+        promises.push(promise)
     }
 
-    Q.all(promises).then(function () {
+    Promise.all(promises).then(function(value) {
         //init
-        map.addLayer(layers[0]);
-        lastLayer = layers[0];
-        //timeline
-        var startDate = setJsonDate(jsons[0])
-        var endDate = setJsonDate(jsons[jsons.length - 1])
-        endDate.setHours(endDate.getHours() + 1);
-        startTime = startDate.getTime();
-        endTime = endDate.getTime();
+        layers = value
+        map.addLayer(layers[0])
+        lastLayer = layers[0]
+            //timeline
+        var startDate = setJsonDate(times[0])
+        var endDate = setJsonDate(times[times.length - 1])
+        endDate.setHours(endDate.getHours() + 1)
+        startTime = startDate.getTime()
+        endTime = endDate.getTime()
 
-        var timelineData = new vis.DataSet([{ start: startDate, end: endDate, content: "leaflet-player demo" }]);
+        var timelineData = new vis.DataSet([{
+            start: startDate,
+            end: endDate,
+            content: "leaflet-player demo"
+        }])
 
         var timelineOptions = {
             "width": "100%",
@@ -73,45 +89,40 @@ function setPlayer(jsons) {
             "showCustomTime": true
         }
 
-        timeline = new vis.Timeline(document.getElementById('timeline'), timelineData, timelineOptions);
+        timeline = new vis.Timeline(document.getElementById("timeline"), timelineData, timelineOptions)
 
-        timeline.setCustomTime(startDate);
+        timeline.setCustomTime(startDate)
 
-        timeline.on('timechange', function (properties) {
-            layerChange(properties.time.getTime());
+        timeline.on("timechange", function(properties) {
+            layerChange(properties.time.getTime())
         })
-    });
+    })
 }
 
 function setJsonDate(name) {
-    var newDate = new Date();
-    newDate.setFullYear(name.substr(0, 4));
-    newDate.setMonth(name.substr(4, 2));
-    newDate.setDate(name.substr(6, 2));
-    newDate.setHours(name.substr(8, 2));
-    newDate.setMinutes('0');
-    newDate.setSeconds('0');
-    return newDate;
-}
-
-function loadGeojson(json) {
-    var layer = L.geoJson(json, { style: style });
-    layers.push(layer);
+    var newDate = new Date()
+    newDate.setFullYear(name.substr(0, 4))
+    newDate.setMonth(name.substr(4, 2))
+    newDate.setDate(name.substr(6, 2))
+    newDate.setHours(name.substr(8, 2))
+    newDate.setMinutes("0")
+    newDate.setSeconds("0")
+    return newDate
 }
 
 function layerChange(currentTime) {
-    var currentDate = new Date(currentTime);
+    var currentDate = new Date(currentTime)
 
     for (var i in layers) {
-        var jsonDate = setJsonDate(times[i]);
+        var jsonDate = setJsonDate(times[i])
 
         if (currentDate >= jsonDate && currentDate < jsonDate.setHours(jsonDate.getHours() + 1)) {
-            var newlayer = layers[i];
+            var newlayer = layers[i]
             if (lastLayer !== undefined && lastLayer !== newlayer) {
-                map.removeLayer(lastLayer);
-                map.addLayer(newlayer);
-                lastLayer = newlayer;
-                return;
+                map.removeLayer(lastLayer)
+                map.addLayer(newlayer)
+                lastLayer = newlayer
+                return
             }
         }
     }
@@ -120,52 +131,54 @@ function layerChange(currentTime) {
 
 function initControl(interval) {
     //play button
-    var playbtn = L.control({ position: 'bottomright' });
+    var playbtn = L.control({
+        position: "bottomright"
+    })
 
-    playbtn.onAdd = function (map) {
-        this._div = L.DomUtil.create('div', 'info');
-        this._button = L.DomUtil.create('button', '', this._div);
-        this._button.innerHTML = 'Play';
-        return this._div;
+    playbtn.onAdd = function(map) {
+        this._div = L.DomUtil.create("div", "info")
+        this._button = L.DomUtil.create("button", "", this._div)
+        this._button.innerHTML = "Play"
+        return this._div
     }
 
-    playbtn.addTo(map);
+    playbtn.addTo(map)
 
-    var isPlaying = false;
-    var player;
+    var isPlaying = false
+    var player
 
-    $('.info button').click(function () {
+    $(".info button").click(function() {
         if (isPlaying) {
             //off
             if (player !== undefined) {
-                clearInterval(player);
+                clearInterval(player)
             }
-            this.innerHTML = 'Play';
-            isPlaying = false;
+            this.innerHTML = "Play"
+            isPlaying = false
         } else {
             //on
-            player = setInterval(function () {
+            player = setInterval(function() {
                 //调节速度
-                var newTime = timeline.getCustomTime().getTime() + interval;
+                var newTime = timeline.getCustomTime().getTime() + interval
                 if (newTime > endTime) {
-                    newTime = startTime;
+                    newTime = startTime
                 }
-                layerChange(newTime);
-                timeline.setCustomTime(new Date(newTime));
+                layerChange(newTime)
+                timeline.setCustomTime(new Date(newTime))
 
-            }, 50);
-            this.innerHTML = 'Stop';
-            isPlaying = true;
+            }, 50)
+            this.innerHTML = "Stop"
+            isPlaying = true
         }
-    });
+    })
 
 }
 
 function init() {
-    initMap();
-    initControl(1000 * 60);
-    var jsons = ['2016072508.json', '2016072509.json', '2016072510.json'];
+    initMap()
+    initControl(1000 * 60)
+    var jsons = ["json/2016072508.json", "json/2016072509.json", "json/2016072510.json"]
     setPlayer(jsons)
 }
 
-init();
+init()
