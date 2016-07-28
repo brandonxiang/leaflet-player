@@ -1,4 +1,4 @@
-var L = require("leaflet")
+import L from "leaflet"
 
 var map
 var times = []
@@ -135,7 +135,7 @@ function initControl(interval) {
         position: "bottomright"
     })
 
-    playbtn.onAdd = function(map) {
+    playbtn.onAdd = function() {
         this._div = L.DomUtil.create("div", "info")
         this._button = L.DomUtil.create("button", "", this._div)
         this._button.innerHTML = "Play"
