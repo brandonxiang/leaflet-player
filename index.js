@@ -47,7 +47,6 @@ function style(feature) {
 function setPlayer(jsons) {
     var promises = [];
 
-    times = jsons;
     for (var i in jsons) {
         promises.push($.getJSON(jsons[i], loadGeojson));
     }
@@ -95,6 +94,7 @@ function setJsonDate(name) {
 }
 
 function loadGeojson(json) {
+    times.push(this.url);
     var layer = L.geoJson(json, { style: style });
     layers.push(layer);
 }
